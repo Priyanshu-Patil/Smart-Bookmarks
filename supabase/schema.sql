@@ -11,14 +11,7 @@ create table bookmarks (
 alter table bookmarks enable row level security;
 
 -- Create policies
-
--- Policy: Users can only see their own bookmarks
-create policy "Users can modify their own bookmarks"
-  on bookmarks for all
-  using ( auth.uid() = user_id );
-
--- Note: The above policy is a simplified version.
--- For production, it is safer to define separate policies for SELECT, INSERT, UPDATE, DELETE.
+-- Note: Using separate policies for each operation is safer and more explicit
 
 -- Policy: Allow users to insert their own bookmarks
 create policy "Users can insert their own bookmarks"
