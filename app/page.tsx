@@ -45,9 +45,6 @@ export default async function Home() {
              <form action="/auth/signout" method="post">
                 <button
                   className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 transition"
-                  // We need a server action or API route for signout really, but button inside form works if we handle it.
-                  // Wait, I haven't implemented signout route.
-                  // I'll update this button to be a client component or simpler standard.
                 >
                   Sign Out
                 </button>

@@ -27,9 +27,13 @@ npm install
 
 ### 2. Supabase Configuration
 1.  Create a new project on [Supabase](https://supabase.com).
-2.  Go to **Authentication > Providers** and correct Google OAuth credentials.
-    - **Authorized Redirect URI**: `https://<your-vercel-domain>/auth/callback` (or `http://localhost:3000/auth/callback` for local dev).
-3.  Go to the **SQL Editor** in Supabase and run the content of `supabase/schema.sql`. This sets up the `bookmarks` table and Row Level Security (RLS) policies.
+2.  Go to **Authentication > URL Configuration**:
+    - Set **Site URL** to `http://localhost:3000` (for local dev) or your Vercel domain (for production)
+3.  Go to **Authentication > Providers** and enable Google OAuth:
+    - Toggle **Enable** to ON
+    - Enter your **Google OAuth Client ID** and **Client Secret** from Google Cloud Console
+    - **Important**: In Google Cloud Console, add this redirect URI: `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
+4.  Go to the **SQL Editor** in Supabase and run the content of `supabase/schema.sql`. This sets up the `bookmarks` table and Row Level Security (RLS) policies.
 
 ### 3. Environment Variables
 Create a `.env.local` file in the root directory:
@@ -50,17 +54,50 @@ Visit `http://localhost:3000`.
 
 ## Challenges & Solutions
 
+### Google OAuth Configuration - Redirect URI Mismatch
+**Problem**: Encountered `Error 400: redirect_uri_mismatch` when attempting to sign in with Google. The error indicated that the redirect URI sent to Google didn't match what was configured in Google Cloud Console.
+
+**Solution**: The issue was understanding the OAuth flow with Supabase. When using Supabase OAuth, Google needs to authorize Supabase's callback URL, not your app's callback URL directly. The correct redirect URI to add in Google Cloud Console is:
+```
+https://<your-supabase-project-ref>.supabase.co/auth/v1/callback
+```
+After adding this exact URL to the Authorized Redirect URIs in Google Cloud Console, the OAuth flow worked correctly. Supabase then handles redirecting back to your app's callback URL (`/auth/callback`).
+
+### Google OAuth Provider Not Enabled
+**Problem**: Initially received `"Unsupported provider: provider is not enabled"` error when clicking "Sign in with Google".
+
+**Solution**: This was a configuration issue in the Supabase dashboard. The Google provider needed to be explicitly enabled:
+1. Navigate to Supabase Dashboard → Authentication → Providers
+2. Click on Google provider
+3. Toggle "Enable" to ON
+4. Enter Google OAuth Client ID and Client Secret from Google Cloud Console
+5. Save the configuration
+
+Additionally, ensure the Site URL in Supabase (Authentication → URL Configuration) is set to your app's URL (`http://localhost:3000` for local development).
+
 ### Real-time Synchronization
 **Problem**: Ensuring the bookmark list updates instantly across multiple tabs while maintaining server-side rendering (SSR) benefits.
-**Solution**: Used a hybrid approach. The initial state uses SSR data for speed and SEO. A client-side `useEffect` subscribes to Supabase Realtime channels to listen for `INSERT` and `DELETE` events, updating the local state optimistically.
+
+**Solution**: Used a hybrid approach. The initial state uses SSR data for speed and SEO. A client-side `useEffect` subscribes to Supabase Realtime channels to listen for `INSERT` and `DELETE` events, updating the local state optimistically. The Realtime subscription respects Row Level Security (RLS) policies, so users only receive updates for their own bookmarks.
 
 ### Authentication Middleware
-**Problem**: Securely protecting identifying routes while allowing OAuth redirects.
-**Solution**: Implemented a robust `middleware.ts` using `@supabase/ssr`'s `createServerClient`. This manages the session refresh token flow and redirects unauthenticated users away from protected routes, while excluding public paths and static assets.
+**Problem**: Securely protecting routes while allowing OAuth redirects to pass through.
+
+**Solution**: Implemented a robust `middleware.ts` using `@supabase/ssr`'s `createServerClient`. This manages the session refresh token flow and redirects unauthenticated users away from protected routes, while excluding public paths (`/login`, `/auth/*`) and static assets. The middleware also handles redirecting authenticated users away from the login page.
 
 ### Next.js 15 Cookie Handling
-**Problem**: Next.js 15 introduced async `cookies()`, which required updating the server-side client initialization.
-**Solution**: Refactored `lib/supabase/server.ts` to `await cookies()` before accessing the store, ensuring compatibility with the latest Next.js patterns.
+**Problem**: Next.js 15 introduced async `cookies()`, which broke the server-side Supabase client initialization.
+
+**Solution**: Refactored `lib/supabase/server.ts` to `await cookies()` before accessing the cookie store, ensuring compatibility with the latest Next.js patterns. This change was necessary because the `cookies()` function is now asynchronous in Next.js 15+.
+
+### Row Level Security (RLS) Policies
+**Problem**: Ensuring users can only access their own bookmarks while allowing real-time subscriptions to work correctly.
+
+**Solution**: Created comprehensive RLS policies in `supabase/schema.sql`:
+- Separate policies for SELECT, INSERT, UPDATE, and DELETE operations
+- All policies use `auth.uid() = user_id` to ensure users can only access their own data
+- RLS automatically filters real-time subscriptions, so users only receive events for their own bookmarks
+- The policies are applied at the database level, providing security even if application code has bugs
 
 ## Deployment to Vercel
 
