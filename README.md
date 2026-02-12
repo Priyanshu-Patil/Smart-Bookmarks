@@ -75,6 +75,18 @@ After adding this exact URL to the Authorized Redirect URIs in Google Cloud Cons
 
 Additionally, ensure the Site URL in Supabase (Authentication → URL Configuration) is set to your app's URL (`http://localhost:3000` for local development).
 
+### Production Deployment - Redirect to Localhost Issue
+**Problem**: After deploying to Vercel, OAuth authentication was redirecting users to `http://localhost:3000` instead of the production Vercel domain, causing authentication failures.
+
+**Solution**: The Supabase Site URL was still configured for localhost. Fixed by updating Supabase Dashboard → Authentication → URL Configuration:
+- Changed **Site URL** from `http://localhost:3000` to the production Vercel domain: `https://smart-bookmarks-zeta.vercel.app`
+- Added the production callback URL to **Redirect URLs** (if available): `https://smart-bookmarks-zeta.vercel.app/auth/callback`
+
+**Important**: For environments where you need both localhost and production to work, you can:
+- Keep the Supabase Site URL set to production (Vercel domain)
+- Use separate Supabase projects for development and production, OR
+- Manually switch the Site URL when testing locally (not recommended for frequent switching)
+
 ### Real-time Synchronization
 **Problem**: Ensuring the bookmark list updates instantly across multiple tabs while maintaining server-side rendering (SSR) benefits.
 
@@ -104,4 +116,8 @@ Additionally, ensure the Site URL in Supabase (Authentication → URL Configurat
 1.  Push code to GitHub.
 2.  Import project in Vercel.
 3.  Add the environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-4.  Deploy!
+4.  **Important**: Update Supabase Site URL:
+    - Go to Supabase Dashboard → Authentication → URL Configuration
+    - Change **Site URL** from `http://localhost:3000` to your Vercel domain (e.g., `https://smart-bookmarks-zeta.vercel.app`)
+    - Add your production callback URL to **Redirect URLs**: `https://your-domain.vercel.app/auth/callback`
+5.  Deploy!

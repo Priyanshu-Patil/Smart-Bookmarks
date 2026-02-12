@@ -2,11 +2,32 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Check for error messages from OAuth callback
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const errorParam = params.get('error')
+      const messageParam = params.get('message')
+      const codeParam = params.get('code')
+      
+      if (errorParam === 'auth') {
+        const errorMessage = messageParam 
+          ? decodeURIComponent(messageParam)
+          : codeParam === 'unexpected_failure'
+            ? 'Server error. Please check: 1) Database schema is set up in Supabase SQL Editor, 2) RLS policies are configured, 3) Supabase project is active.'
+            : 'Authentication failed. Please try again.'
+        setError(errorMessage)
+        // Clean up URL
+        window.history.replaceState({}, '', '/login')
+      }
+    }
+  }, [])
 
   const handleLogin = async () => {
     setLoading(true)
